@@ -105,6 +105,8 @@ router.post('/', async (req, res) => {
     const settings = await Settings.findOne();
 
     const data = { ...req.body };
+    const isImport = data.importMode;
+    delete data.importMode;
     if (!data.customer) delete data.customer;
 
     // Create AMC
@@ -116,33 +118,46 @@ router.post('/', async (req, res) => {
     }
     await amc.save();
 
-    // Auto-create bill for AMC
-    const prefix = settings?.billPrefix || 'BILL';
-    const counter = settings?.billCounter || 1;
-    const billNumber = `${prefix}-AMC-${String(counter).padStart(5, '0')}`;
+    let bill = null;
 
-    if (settings) {
-      settings.billCounter = counter + 1;
-      await settings.save();
+    if (isImport && data.billId) {
+      // Import mode: link to existing bill, don't create new one
+      bill = await Bill.findById(data.billId);
+      if (bill) {
+        bill.amcId = amc._id;
+        await bill.save();
+      }
+    } else {
+      // Normal mode: Auto-create bill for AMC
+      const prefix = settings?.billPrefix || 'BILL';
+      const counter = settings?.billCounter || 1;
+      const billNumber = `${prefix}-AMC-${String(counter).padStart(5, '0')}`;
+
+      if (settings) {
+        settings.billCounter = counter + 1;
+        await settings.save();
+      }
+
+      bill = new Bill({
+        billNumber,
+        type: 'AMC',
+        customerName: amc.customerName,
+        customerPhone: amc.phone,
+        items: [{ productName: 'AMC Contract', qty: 1, price: amc.amount, total: amc.amount }],
+        subtotal: amc.amount,
+        total: amc.amount,
+        paid: req.body.paid || 0,
+        date: amc.startDate,
+        amcId: amc._id,
+      });
+      await bill.save();
     }
 
-    const bill = new Bill({
-      billNumber,
-      type: 'AMC',
-      customerName: amc.customerName,
-      customerPhone: amc.phone,
-      items: [{ productName: 'AMC Contract', qty: 1, price: amc.amount, total: amc.amount }],
-      subtotal: amc.amount,
-      total: amc.amount,
-      paid: req.body.paid || 0,
-      date: amc.startDate,
-      amcId: amc._id,
-    });
-    await bill.save();
-
     // Link bill to AMC
-    amc.billId = bill._id;
-    await amc.save();
+    if (bill) {
+      amc.billId = bill._id;
+      await amc.save();
+    }
 
     res.status(201).json({ success: true, data: { amc, bill } });
   } catch (err) {
