@@ -51,7 +51,9 @@ router.get('/:id', async (req, res) => {
 // CREATE service request
 router.post('/', async (req, res) => {
   try {
-    const service = new ServiceRequest(req.body);
+    const data = { ...req.body };
+    if (!data.customer) delete data.customer;
+    const service = new ServiceRequest(data);
     await service.save();
 
     // Auto-create or update customer record
@@ -79,7 +81,9 @@ router.put('/:id', async (req, res) => {
     const service = await ServiceRequest.findById(req.params.id);
     if (!service) return res.status(404).json({ success: false, message: 'Service request not found' });
 
-    Object.assign(service, req.body);
+    const updateData = { ...req.body };
+    if (!updateData.customer) delete updateData.customer;
+    Object.assign(service, updateData);
     if (req.body.status === 'completed' && !service.completedDate) {
       service.completedDate = new Date();
     }

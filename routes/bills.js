@@ -68,6 +68,16 @@ router.post('/', async (req, res) => {
 
     const billData = { ...req.body, billNumber };
 
+    // Clean empty ObjectId fields to prevent BSONError cast failures
+    if (!billData.customer) delete billData.customer;
+    if (billData.items) {
+      billData.items = billData.items.map(item => {
+        const cleaned = { ...item };
+        if (!cleaned.product) delete cleaned.product;
+        return cleaned;
+      });
+    }
+
     // Calculate totals
     let subtotal = 0;
     if (billData.items && billData.items.length > 0) {
@@ -106,6 +116,16 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const updateData = { ...req.body };
+
+    // Clean empty ObjectId fields to prevent BSONError cast failures
+    if (!updateData.customer) delete updateData.customer;
+    if (updateData.items) {
+      updateData.items = updateData.items.map(item => {
+        const cleaned = { ...item };
+        if (!cleaned.product) delete cleaned.product;
+        return cleaned;
+      });
+    }
 
     // Recalculate totals
     if (updateData.items) {

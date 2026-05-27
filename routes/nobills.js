@@ -50,7 +50,9 @@ router.get('/:id', async (req, res) => {
 // CREATE no-bill
 router.post('/', async (req, res) => {
   try {
-    const nobill = new NoBill(req.body);
+    const data = { ...req.body };
+    if (!data.product) delete data.product;
+    const nobill = new NoBill(data);
     await nobill.save();
 
     // Reduce stock if inventory enabled and product selected
@@ -75,7 +77,9 @@ router.put('/:id', async (req, res) => {
     const nobill = await NoBill.findById(req.params.id);
     if (!nobill) return res.status(404).json({ success: false, message: 'No-Bill not found' });
 
-    Object.assign(nobill, req.body);
+    const updateData = { ...req.body };
+    if (!updateData.product) delete updateData.product;
+    Object.assign(nobill, updateData);
     await nobill.save();
 
     res.json({ success: true, data: nobill });

@@ -104,8 +104,11 @@ router.post('/', async (req, res) => {
   try {
     const settings = await Settings.findOne();
 
+    const data = { ...req.body };
+    if (!data.customer) delete data.customer;
+
     // Create AMC
-    const amc = new AMC(req.body);
+    const amc = new AMC(data);
     if (!amc.nextServiceDate && amc.lastServiceDate && amc.serviceIntervalDays) {
       const nextDate = new Date(amc.lastServiceDate);
       nextDate.setDate(nextDate.getDate() + amc.serviceIntervalDays);
@@ -153,7 +156,9 @@ router.put('/:id', async (req, res) => {
     const amc = await AMC.findById(req.params.id);
     if (!amc) return res.status(404).json({ success: false, message: 'AMC not found' });
 
-    Object.assign(amc, req.body);
+    const updateData = { ...req.body };
+    if (!updateData.customer) delete updateData.customer;
+    Object.assign(amc, updateData);
     await amc.save();
 
     res.json({ success: true, data: amc });
