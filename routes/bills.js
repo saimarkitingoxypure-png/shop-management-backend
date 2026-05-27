@@ -55,18 +55,25 @@ router.post('/', async (req, res) => {
   try {
     const settings = await Settings.findOne();
 
-    // Generate bill number
-    const prefix = settings?.billPrefix || 'BILL';
-    const counter = settings?.billCounter || 1;
-    const billNumber = `${prefix}-${String(counter).padStart(5, '0')}`;
+    let billNumber;
+    if (req.body.importMode && req.body.billNumber) {
+      // Import mode: use the provided billNumber, skip counter increment
+      billNumber = req.body.billNumber;
+    } else {
+      // Normal mode: auto-generate bill number
+      const prefix = settings?.billPrefix || 'BILL';
+      const counter = settings?.billCounter || 1;
+      billNumber = `${prefix}-${String(counter).padStart(5, '0')}`;
 
-    // Update counter
-    if (settings) {
-      settings.billCounter = counter + 1;
-      await settings.save();
+      // Update counter
+      if (settings) {
+        settings.billCounter = counter + 1;
+        await settings.save();
+      }
     }
 
     const billData = { ...req.body, billNumber };
+    delete billData.importMode;
 
     // Clean empty ObjectId fields to prevent BSONError cast failures
     if (!billData.customer) delete billData.customer;
