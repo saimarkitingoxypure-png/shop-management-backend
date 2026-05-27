@@ -49,7 +49,7 @@ app.get('/', (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', version: '1.0.1', timestamp: new Date().toISOString() });
 });
 
 // Error handler
